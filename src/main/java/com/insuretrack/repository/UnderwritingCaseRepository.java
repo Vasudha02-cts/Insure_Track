@@ -8,5 +8,5 @@ import java.util.List;
 
 @Repository
 public interface UnderwritingCaseRepository extends JpaRepository<UnderwritingCase, Long> {
-    List<UnderwritingCase> findByDecision(String decision); // Queue for underwriters [cite: 117]
+    List<UnderwritingCase> findByDecision(UnderwritingCase.DecisionStatus decision);
 }
