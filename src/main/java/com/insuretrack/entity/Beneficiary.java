@@ -1,9 +1,11 @@
 package com.insuretrack.entity;
 
 import jakarta.persistence.*;
+import lombok.Data;
 
 @Entity
 @Table(name = "Beneficiary")
+@Data
 public class Beneficiary {
 
     @Id
@@ -24,5 +26,5 @@ public class Beneficiary {
     @Column(name = "PercentageShare")
     private Double percentageShare;
 
-    // Getters and Setters
+
 }

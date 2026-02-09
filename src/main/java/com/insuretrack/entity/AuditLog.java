@@ -17,12 +17,11 @@ public class AuditLog {
     private String action;
     private String resource;
     private LocalDateTime timestamp;
-    private String metadata;
+    private String Metadata;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "UserID")
-    @JsonBackReference // This tells Jackson NOT to serialize the User again inside the AuditLog
+    @JsonBackReference
     private User user;
 }
-
 
