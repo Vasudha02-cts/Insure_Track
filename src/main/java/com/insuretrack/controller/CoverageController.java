@@ -36,8 +36,4 @@ public class CoverageController {
         return "Coverage deleted successfully";
     }
     // New methods to add:
-
-
-
-
 }
