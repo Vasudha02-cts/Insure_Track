@@ -1,11 +1,11 @@
 package com.insuretrack.controller;
 
-import com.insuretrack.dto.LoginRequest;
+import com.insuretrack.dto.LoginRequestDTO;
+import com.insuretrack.dto.LoginResponseDTO;
 import com.insuretrack.entity.User;
+import com.insuretrack.mapper.UserMapper;
 import com.insuretrack.repository.UserRepository;
-import com.insuretrack.repository.AuditLogRepository; // Or an AuditService
 import com.insuretrack.service.AuditService;
-import com.insuretrack.service.impl.AuditServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -28,20 +28,26 @@ public class AuthController {
     @Autowired
     private AuditService auditService;
 
+    @Autowired
+    private UserMapper userMapper;
+
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
-        Optional<User> userOptional = userRepository.findByEmail(loginRequest.getEmail());
+    public ResponseEntity<LoginResponseDTO> login(@RequestBody LoginRequestDTO loginRequestDTO) {
+        Optional<User> userOptional = userRepository.findByEmail(loginRequestDTO.getEmail());
 
         if (userOptional.isPresent()) {
             User user = userOptional.get();
-            if (passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
+            if (passwordEncoder.matches(loginRequestDTO.getPassword(), user.getPassword())) {
 
                 // 2. Call the method on the instance, not the class
                 auditService.logAction(user, "LOGIN_SUCCESS", "AUTH_MODULE", "User authenticated via manual login");
+                // Map entity to the clean Response DTO
+                LoginResponseDTO response = userMapper.toLoginResponse(user);
+                response.setMessage("Login Successful!");
 
-                return ResponseEntity.ok("Login Successful! Role: " + user.getRole());
+                return ResponseEntity.ok(response);
             }
         }
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
     }
 }

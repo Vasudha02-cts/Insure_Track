@@ -1,14 +1,10 @@
 package com.insuretrack.controller;
 
-import com.insuretrack.dto.CustomerDTO;
-import com.insuretrack.dto.UserDTO;
-import com.insuretrack.entity.Customer;
-import com.insuretrack.entity.User;
+import com.insuretrack.dto.*;
 import com.insuretrack.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
 
 @RestController
@@ -18,34 +14,33 @@ public class UserController {
     @Autowired
     private UserService userService;
 
+    // 1. Standard User Registration
     @PostMapping("/register")
-    public ResponseEntity<User> register(@RequestBody User user) {
-        return ResponseEntity.ok(userService.registerUser(user));
+    public ResponseEntity<UserResponseDTO> register(@RequestBody UserRequestDTO userDTO) {
+        return ResponseEntity.ok(userService.registerUser(userDTO));
     }
 
-    //  for Customer registration if you want the profile linked
+    // 2. Customer Registration (Profile + User Account)
     @PostMapping("/register/customer")
-    public ResponseEntity<Customer> registerCustomer(@RequestBody CustomerDTO customerDTO) {
-        // Create the UserDTO from the incoming CustomerDTO data
-        UserDTO userDTO = new UserDTO();
-        userDTO.setName(customerDTO.getName());
-        userDTO.setEmail(customerDTO.getEmail());
-        userDTO.setPhone(customerDTO.getPhone());
+    public ResponseEntity<CustomerResponseDTO> registerCustomer(@RequestBody CustomerRequestDTO customerRequest) {
+        // 1. Give it a clean variable name
+        // 2. Pass the DTO to the service
+        CustomerResponseDTO registeredCustomer = userService.registerCustomer(customerRequest);
 
-        // Pass the populated DTOs to the service
-        return ResponseEntity.ok(userService.registerCustomer(userDTO, customerDTO));
+        // 3. Return the actual data instead of a 'new' empty object
+        return ResponseEntity.ok(registeredCustomer);
     }
 
-    // Feature: Retrieve specific user profile
+    // 3. Retrieve specific user profile
     @GetMapping("/{id}")
-    public ResponseEntity<User> getUser(@PathVariable Long id) {
-        User user = userService.getUserById(id);
+    public ResponseEntity<UserResponseDTO> getUser(@PathVariable Long id) {
+        UserResponseDTO user = userService.getUserById(id);
         return user != null ? ResponseEntity.ok(user) : ResponseEntity.notFound().build();
     }
 
-    // List all users (Admin functionality)
+    // 4. List all users (Admin functionality)
     @GetMapping
-    public ResponseEntity<List<User>> listAllUsers() {
+    public ResponseEntity<List<UserResponseDTO>> listAllUsers() {
         return ResponseEntity.ok(userService.getAllUsers());
     }
 }

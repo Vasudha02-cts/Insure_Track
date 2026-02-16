@@ -8,5 +8,5 @@ import java.util.List;
 
 @Repository
 public interface InsuredObjectRepository extends JpaRepository<InsuredObject, Long> {
-    List<InsuredObject> findByCustomer_CustomerID(Long customerID); // Get all assets per customer [cite: 80]
+    List<InsuredObject> findByCustomer_CustomerID(Long customerID);
 }

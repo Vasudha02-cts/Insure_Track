@@ -1,10 +1,14 @@
 package com.insuretrack.entity;
 
+import com.insuretrack.entity.enums.ClaimStatus;
 import jakarta.persistence.*;
+import lombok.Data;
+
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "Settlement")
+@Data
 public class Settlement {
 
     @Id
@@ -26,7 +30,8 @@ public class Settlement {
     private String paymentReference;
 
     @Column(name = "Status")
-    private String status; // Pending, Paid, Failed [cite: 199]
+    @Enumerated(EnumType.STRING)
+    private ClaimStatus status; // Pending, Paid, Failed
 
     // Getters and Setters...
 }

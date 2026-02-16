@@ -1,11 +1,11 @@
 package com.insuretrack.entity;
 
-import com.insuretrack.entity.embeddable.ContactDetails;
+import com.insuretrack.entity.enums.CommonStatus;
 import com.insuretrack.entity.enums.CustomerSegment;
 import jakarta.persistence.*;
 import lombok.Data;
-
 import java.time.LocalDate;
+import java.util.List;
 
 @Entity
 @Table(name = "Customer")
@@ -15,18 +15,20 @@ public class Customer {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long customerID;
 
-    @OneToOne
-    @JoinColumn(name = "UserID")
-    private User user;
-
+    private Long userID; // Simple Long to link to User Table
     private String name;
     private LocalDate dob;
+    private String contactInfo; // Simple String instead of Embeddable
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "Segment")
     private CustomerSegment segment;
-    private String status;
 
-    @Embedded
-    private ContactDetails contactDetails;
+    @Enumerated(EnumType.STRING)
+    private CommonStatus status;
+
+    @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Beneficiary> beneficiaries;
+
+    @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<InsuredObject> insuredObjects;
 }

@@ -1,24 +1,29 @@
 package com.insuretrack.service.impl;
 
-import com.insuretrack.dto.CustomerDTO;
-import com.insuretrack.dto.UserDTO;
+import com.insuretrack.dto.CustomerRequestDTO;
+import com.insuretrack.dto.CustomerResponseDTO;
+import com.insuretrack.dto.UserRequestDTO;
+import com.insuretrack.dto.UserResponseDTO;
+import com.insuretrack.entity.AuditLog;
 import com.insuretrack.entity.Customer;
 import com.insuretrack.entity.User;
-import com.insuretrack.entity.AuditLog;
 import com.insuretrack.entity.embeddable.ContactDetails;
-import com.insuretrack.entity.enums.CustomerSegment;
+import com.insuretrack.entity.enums.CommonStatus;
 import com.insuretrack.entity.enums.UserRole;
+import com.insuretrack.mapper.CustomerMapper;
+import com.insuretrack.mapper.UserMapper;
+import com.insuretrack.repository.AuditLogRepository;
 import com.insuretrack.repository.CustomerRepository;
 import com.insuretrack.repository.UserRepository;
-import com.insuretrack.repository.AuditLogRepository;
 import com.insuretrack.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.time.LocalDateTime;
 import java.util.List;
-import com.insuretrack.entity.enums.CustomerSegment;
+import java.util.stream.Collectors;
 
 @Service
 public class UserServiceImpl implements UserService {
@@ -31,67 +36,98 @@ public class UserServiceImpl implements UserService {
 
     @Autowired
     private CustomerRepository customerRepository;
+
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private UserMapper userMapper;
+
+    @Autowired
+    private CustomerMapper customerMapper;
+
     @Override
     @Transactional
-    public User registerUser(User user) {
-        if(userRepository.findByEmail(user.getEmail()).isPresent()) {
+    public UserResponseDTO registerUser(UserRequestDTO userRequestDTO) {
+        if (userRepository.findByEmail(userRequestDTO.getEmail()).isPresent()) {
             throw new RuntimeException("Email already registered!");
         }
-        // Hash the password
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
-        // 1. Save the User
+
+        // Use Mapper to convert DTO to Entity [cite: 1]
+        User user = userMapper.toEntity(userRequestDTO);
+
+        // Hash the password for security
+        user.setPassword(passwordEncoder.encode(userRequestDTO.getPassword()));
+
         User savedUser = userRepository.save(user);
 
-        // 2. Create Audit Log Entry
-        AuditLog log = new AuditLog();
-        log.setUser(savedUser);
-        log.setAction("REGISTER");
-        log.setResource("USER_MODULE");
-        log.setTimestamp(LocalDateTime.now());
-        log.setMetadata("New user registered with role: " + savedUser.getRole());
+        // Create Audit Log Entry [cite: 39, 48]
+        logInternalAction(savedUser, "REGISTER", "USER_MODULE",
+                "New user registered with role: " + savedUser.getRole());
 
-        auditLogRepository.save(log);
-
-        return userRepository.save(user);
+        return userMapper.toResponse(savedUser);
     }
+
+    @Override
     @Transactional
-    public Customer registerCustomer(UserDTO userDTO, CustomerDTO customerDTO) {
-        // 1. Create User from UserDTO (Don't leave these null!)
-        User user = new User();
-        user.setName(userDTO.getName());   // Map from DTO
-        user.setEmail(userDTO.getEmail()); // Map from DTO
-        user.setPhone(userDTO.getPhone()); // Map from DTO
+    public CustomerResponseDTO registerCustomer(CustomerRequestDTO dto) {
+        // 1. Create and save the User (Security Account)
+        User user = userMapper.toEntityFromCustomerRequest(dto);
         user.setRole(UserRole.CUSTOMER);
-        user = userRepository.save(user);
+        user.setPassword(passwordEncoder.encode(dto.getPassword()));
+        User savedUser = userRepository.save(user);
 
-        // 2. Map data to the Embeddable
-        ContactDetails contact = new ContactDetails();
-        contact.setEmail(user.getEmail());
-        contact.setPhone(user.getPhone());
-        contact.setContactInfo(customerDTO.getContactInfo()); // Map from DTO
+        // 2. Map the DTO to Customer Entity
+        Customer customer = customerMapper.toEntity(dto);
+        customer.setUserID(savedUser.getUserID()); // Link the Long ID
+        customer.setStatus(com.insuretrack.entity.enums.CommonStatus.ACTIVE);
 
-        // 3. Create Customer and link everything
-        Customer customer = new Customer();
-        customer.setUser(user);
-        customer.setName(user.getName());
-        customer.setDob(customerDTO.getDob()); // Map from DTO
-        customer.setSegment(customerDTO.getSegment()); // Map from DTO
-        customer.setStatus("ACTIVE");
-        customer.setContactDetails(contact);
+        // 3. Setup parent-child links for Module 2 data
+        if (customer.getBeneficiaries() != null) {
+            customer.getBeneficiaries().forEach(b -> b.setCustomer(customer));
+        }
+        if (customer.getInsuredObjects() != null) {
+            customer.getInsuredObjects().forEach(io -> io.setCustomer(customer));
+        }
 
-        return customerRepository.save(customer);
+        // 4. Save the Customer Profile
+        Customer savedCustomer = customerRepository.save(customer);
+
+        // 5. Combine data into the final Response
+        CustomerResponseDTO response = customerMapper.toResponse(savedCustomer);
+        response.setEmail(savedUser.getEmail()); // Add from the User entity
+        response.setPhone(savedUser.getPhone()); // Add from the User entity
+
+        logInternalAction(savedUser, "REGISTER_CUSTOMER", "CUSTOMER_MODULE", "Full profile created");
+
+        return response;
+    }
+    @Override
+    public UserResponseDTO getUserById(Long id) {
+        // Find entity and map to Response DTO [cite: 42]
+        return userRepository.findById(id)
+                .map(userMapper::toResponse)
+                .orElseThrow(() -> new RuntimeException("User not found with ID: " + id));
     }
 
     @Override
-    public User getUserById(Long id) {
-        return userRepository.findById(id).orElse(null);
+    public List<UserResponseDTO> getAllUsers() {
+        // Retrieve all and convert the entire list to Response DTOs [cite: 302]
+        return userRepository.findAll().stream()
+                .map(userMapper::toResponse)
+                .collect(Collectors.toList());
     }
 
-    @Override
-    public List<User> getAllUsers() {
-        return userRepository.findAll();
+    /**
+     * Internal helper to handle audit logging consistently [cite: 48, 258]
+     */
+    private void logInternalAction(User user, String action, String resource, String metadata) {
+        AuditLog log = new AuditLog();
+        log.setUser(user);
+        log.setAction(action);
+        log.setResource(resource);
+        log.setTimestamp(LocalDateTime.now());
+        log.setMetadata(metadata);
+        auditLogRepository.save(log);
     }
 }

@@ -10,21 +10,11 @@ public class Beneficiary {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "BeneficiaryID")
     private Long beneficiaryID;
-
+    private String name;
+    private String relationship;
+    private Double percentageShare;
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "CustomerID", nullable = false)
     private Customer customer;
-
-    @Column(name = "Name")
-    private String name;
-
-    @Column(name = "Relationship")
-    private String relationship;
-
-    @Column(name = "PercentageShare")
-    private Double percentageShare;
-
-
 }

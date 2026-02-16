@@ -8,9 +8,9 @@ import java.util.List;
 @Repository
 public interface SettlementRepository extends JpaRepository<Settlement, Long> {
 
-    // Find settlements for a specific claim
-    List<Settlement> findByClaim_ClaimID(Long claimID);
+    // CHANGE: Return a single Settlement instead of a List
+    Settlement findByClaim_ClaimID(Long claimID);
 
-    // Filter by payment status (e.g., "Pending" or "Paid")
+    // If you need to find multiple by status, List is fine here
     List<Settlement> findByStatus(String status);
 }

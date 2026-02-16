@@ -3,8 +3,9 @@ package com.insuretrack.service;
 import com.insuretrack.entity.User;
 
 public interface AuditService {
-    /**
-     * Requirement: Record system actions for audit trails [cite: 16, 28, 39, 48-57].
-     */
+    // Log using the full User object
     void logAction(User user, String action, String resource, String metadata);
+
+    // Log using just the UserID (Useful for automated or background tasks)
+    void logAction(Long userId, String action, String resource, String metadata);
 }

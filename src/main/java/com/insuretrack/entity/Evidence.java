@@ -3,10 +3,13 @@ package com.insuretrack.entity;
 
 
 import jakarta.persistence.*;
+import lombok.Data;
+
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "Evidence")
+@Data
 public class Evidence {
 
     @Id
