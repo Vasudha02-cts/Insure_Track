@@ -5,25 +5,20 @@ import jakarta.persistence.*;
 import lombok.Data;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+@Data
 @Entity
 @Table(name = "Reserve")
-@Data
 public class Reserve {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long reserveID;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "ClaimID")
+    @OneToOne @JoinColumn(name = "claim_id")
     private Claim claim;
 
-    private Double amount;
-    private LocalDateTime setDate;
-    @UpdateTimestamp
-    private LocalDateTime updatedDate;
-    @Enumerated(EnumType.STRING)
-    private ClaimStatus status;
-
+    private Double amount; // The calculated reserve
+    private LocalDate setDate;
+    private String status; // Open, Adjusted, Released
 }

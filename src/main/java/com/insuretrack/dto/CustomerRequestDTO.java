@@ -10,9 +10,9 @@ import java.util.List;
 public class CustomerRequestDTO {
     // User Account Info
     private String email;
-    private String phone;
+    private Long phone;
     private String password; // Crucial for registration
-
+    private Long userID;
     // Profile Info
     private String name;
     private LocalDate dob;
@@ -23,4 +23,6 @@ public class CustomerRequestDTO {
     // --- Module 2: Extended Data (The "Merge" fix) ---
     private List<BeneficiaryRequestDTO> beneficiaries;
     private List<InsuredObjectRequestDTO> insuredObjects;
+
+
 }

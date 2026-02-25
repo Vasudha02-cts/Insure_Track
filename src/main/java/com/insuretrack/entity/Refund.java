@@ -1,22 +1,24 @@
 package com.insuretrack.entity;
 
 import jakarta.persistence.*;
-
-import java.time.LocalDateTime;
+import lombok.Data;
+import java.time.LocalDate;
 
 @Entity
 @Table(name = "Refund")
+@Data
 public class Refund {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long refundID;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "PaymentID")
-    private Payment payment;
+    @Column(name = "RefundID")
+    private Long refundId;
 
     private Double amount;
-    private LocalDateTime processedDate;
+    private LocalDate processedDate;
     private String reason;
-    private String status; // Initiated/Completed/Failed [cite: 238]
+    private String status;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "PaymentID", nullable = false)
+    private Payment payment;
 }

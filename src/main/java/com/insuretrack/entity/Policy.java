@@ -1,25 +1,39 @@
 package com.insuretrack.entity;
 
+import com.insuretrack.entity.enums.PolicyStatus;
 import jakarta.persistence.*;
-import lombok.Data; // Ensure this is imported
+import jakarta.validation.constraints.*;
+import lombok.*;
+
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
+/**
+ * Table: Policy
+ * Columns: PolicyID, QuoteID, PolicyNumber, EffectiveDate, ExpiryDate, Premium, Status
+ * Relationship:
+ *  - Many policies belong to one Quote (QuoteID -> Quote.QuoteID)
+ */
+
+@Data
 @Entity
 @Table(name = "Policy")
-@Data // This is crucial for Spring Data JPA to find 'policyNumber'
 public class Policy {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long policyID;
 
-    private Long quoteID;
+    @OneToOne @JoinColumn(name = "quote_id")
+    private Quote quote;
 
-    // Check this spelling carefully!
-    // It must match 'findByPolicyNumber' exactly.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "customer_id") // This fixes 'setCustomer'
+    private Customer customer;
+
     private String policyNumber;
-
     private LocalDate effectiveDate;
     private LocalDate expiryDate;
-    private Double premium;
-    private String status;
+    private BigDecimal premium;
+
+    @Enumerated(EnumType.STRING)
+    private PolicyStatus status;
 }

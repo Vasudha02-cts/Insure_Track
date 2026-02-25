@@ -3,6 +3,7 @@ package com.insuretrack.controller;
 import com.insuretrack.dto.*;
 import com.insuretrack.service.CustomerService;
 import com.insuretrack.service.InsuredObjectService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -10,12 +11,13 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/customers")
+@RequiredArgsConstructor
 public class CustomerModuleController {
 
     @Autowired
     private CustomerService customerService;
 
-    private InsuredObjectService insuredObjectService;
+    private final InsuredObjectService insuredObjectService;
 
     @PostMapping
     public ResponseEntity<CustomerResponseDTO> createProfile(@RequestBody CustomerRequestDTO dto) {

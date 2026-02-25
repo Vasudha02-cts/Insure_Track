@@ -1,43 +1,42 @@
 package com.insuretrack.entity;
 
+import com.insuretrack.entity.enums.QuoteStatus;
 import jakarta.persistence.*;
-import java.time.LocalDateTime;
+import jakarta.validation.constraints.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
+import lombok.ToString;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+
+/**
+ * Table: Quote
+ * This entity manages the link between the Customer, the Product, and the Asset (InsuredObject).
+ */
+@Data
 @Entity
 @Table(name = "Quote")
 public class Quote {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "QuoteID")
     private Long quoteID;
 
-    // Relationship to Customer [cite: 127]
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "CustomerID", nullable = false)
-    private Customer customer;
+    @ManyToOne
+    @JoinColumn(name = "customer_id")
+    private Customer customer; // Service uses .setCustomer()
 
-    // Relationship to Product [cite: 128]
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "ProductID", nullable = false)
-    private Product product;
-
-    // Relationship to the specific object being insured [cite: 129]
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "InsuredObjectID", nullable = false)
+    @ManyToOne
+    @JoinColumn(name = "insured_object_id")
     private InsuredObject insuredObject;
 
-    @Column(name = "CoveragesJSON", columnDefinition = "TEXT") // Stores selection of coverages
+    private Long productID;
     private String coveragesJSON;
+    private BigDecimal premium; // Added for 'Cannot resolve symbol premium'
+    private LocalDate createdDate; // Added for 'Cannot resolve symbol createdDate'
 
-    @Column(name = "Premium")
-    private Double premium; // Calculated cost [cite: 132]
-
-    @Column(name = "CreatedDate")
-    private LocalDateTime createdDate;
-
-    @Column(name = "Status")
-    private String status; // Draft/Submitted/Rated/Approved/Expired [cite: 134]
-
-    // Constructors, Getters, and Setters
+    @Enumerated(EnumType.STRING)
+    private QuoteStatus status;
 }

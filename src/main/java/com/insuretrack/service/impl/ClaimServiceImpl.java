@@ -3,171 +3,210 @@ package com.insuretrack.service.impl;
 import com.insuretrack.dto.*;
 import com.insuretrack.entity.*;
 import com.insuretrack.entity.enums.ClaimStatus;
+import com.insuretrack.entity.enums.PaymentStatus;
+import com.insuretrack.exception.NotFoundException;
 import com.insuretrack.mapper.ClaimMapper;
 import com.insuretrack.repository.*;
-import com.insuretrack.service.AuditService;
 import com.insuretrack.service.ClaimService;
-import jakarta.transaction.Transactional;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class ClaimServiceImpl implements ClaimService {
-    @Autowired
-    private ClaimRepository claimRepository;
-    @Autowired
-    private PolicyRepository policyRepository;
-    @Autowired
-    private ClaimAssignmentRepository claimAssignmentRepository;
-    @Autowired
-    private ReserveRepository reserveRepository;
-    @Autowired
-    private EvidenceRepository evidenceRepository;
-    @Autowired
-    private SettlementRepository settlementRepository;
-    @Autowired
-    private AuditService auditService;
-    @Autowired
-    private ClaimMapper claimMapper; // Inject your mapper
 
-    @Autowired
-    private UserRepository userRepository;
-
+    private final ClaimRepository claimRepository;
+    private final PolicyRepository policyRepository;
+    private final ReserveRepository reserveRepository;
+    private final SettlementRepository settlementRepository;
+    private final ClaimAssignmentRepository assignmentRepository;
+    private final EvidenceRepository evidenceRepository;
+    private final ClaimMapper claimMapper;
 
     @Override
     @Transactional
-    public ClaimResponseDTO processIntake(ClaimRequestDTO dto) {
-        // 1. Use MapStruct to convert DTO to Entity automatically
-        // This handles incidentDate conversion and policy mapping
-        Claim claim = claimMapper.toEntity(dto);
+    public ClaimResponseDTO initiateClaim(ClaimRequestDTO request) {
+        Policy policy = policyRepository.findById(request.getPolicyID())
+                .orElseThrow(() -> new NotFoundException("Active Policy not found"));
 
-        // 2. Set business-logic specific fields
+        Claim claim = new Claim();
+        claim.setPolicy(policy);
+        claim.setIncidentDate(request.getIncidentDate());
         claim.setReportedDate(LocalDate.now());
+        claim.setClaimType(request.getClaimType());
+        claim.setDescription(request.getDescription());
         claim.setStatus(ClaimStatus.OPEN);
 
-        Claim savedClaim = claimRepository.save(claim);
-
-        // 3. Log the action using the policy number for context
-        auditService.logAction(15L, "FNOL_INTAKE", "CLAIMS_MODULE",
-                "Claim opened for Policy: " + savedClaim.getPolicy().getPolicyNumber());
-
-        // 4. Return the Response DTO
-        return claimMapper.toResponse(savedClaim);
+        return claimMapper.toResponse(claimRepository.save(claim));
     }
+
+//    @Override
+//    @Transactional
+//    public ClaimAssignmentResponseDTO assignAdjuster(Long claimID, Long adjusterId, String priority) {
+//        Claim claim = claimRepository.findById(claimID)
+//                .orElseThrow(() -> new NotFoundException("Claim not found"));
+//
+//        ClaimAssignment assignment = new ClaimAssignment();
+//        assignment.setClaim(claim);
+//        assignment.setAdjusterID(adjusterId);
+//        assignment.setPriority(priority);
+//        assignment.setAssignmentDate(LocalDateTime.now());
+//
+//        ClaimAssignment saved = assignmentRepository.save(assignment);
+//
+//        // Return a manual DTO or use a specific AssignmentMapper if you have one
+//        ClaimAssignmentResponseDTO dto = new ClaimAssignmentResponseDTO();
+//        dto.setAssignmentID(saved.getAssignmentID());
+//        dto.setClaimID(claimID);
+//        dto.setAdjusterID(adjusterId);
+//        dto.setPriority(priority);
+//        dto.setAssignmentDate(saved.getAssignmentDate());
+//        return dto;
+//    }
+@Override
+@Transactional
+public ClaimAssignmentResponseDTO assignAdjuster(Long claimID, Long adjusterId, String priority) {
+    // We override the incoming adjusterId to always be 5 (Anusha)
+    Long dedicatedAdjusterId = 5L;
+
+    Claim claim = claimRepository.findById(claimID)
+            .orElseThrow(() -> new NotFoundException("Claim not found"));
+
+    // Check if already assigned to avoid duplicates
+    List<ClaimAssignment> existing = assignmentRepository.findByClaim_ClaimID(claimID);
+    ClaimAssignment assignment = existing.isEmpty() ? new ClaimAssignment() : existing.get(0);
+
+    assignment.setClaim(claim);
+    assignment.setAdjusterID(dedicatedAdjusterId); // Hardcoded to Anusha
+    assignment.setPriority(priority != null ? priority : "MEDIUM");
+    assignment.setAssignmentDate(LocalDateTime.now());
+
+    ClaimAssignment saved = assignmentRepository.save(assignment);
+
+    // Return response
+    ClaimAssignmentResponseDTO dto = new ClaimAssignmentResponseDTO();
+    dto.setAssignmentID(saved.getAssignmentID());
+    dto.setClaimID(claimID);
+    dto.setAdjusterID(dedicatedAdjusterId);
+    dto.setPriority(saved.getPriority());
+    dto.setAssignmentDate(saved.getAssignmentDate());
+
+    return dto;
+}
+
     @Override
     @Transactional
-    public ClaimAssignmentResponseDTO assignAdjuster(Long claimID, Long adjusterID, String priority) {
-        Claim claim = claimRepository.findById(claimID).orElseThrow();
+    public ReserveResponseDTO setClaimReserve(Long claimID, Double estimatedRepairCost) {
+        Claim claim = claimRepository.findById(claimID)
+                .orElseThrow(() -> new NotFoundException("Claim not found"));
 
-        ClaimAssignment assignment = new ClaimAssignment();
-        assignment.setClaim(claim);
-        assignment.setAdjusterID(adjusterID);
-        assignment.setPriority(priority);
-        assignment.setAssignmentDate(LocalDateTime.now());
+        // AUTO formula: (Repair - Deductible) + 10% Fee
+        Double deductible = 500.0;
+        Double netLoss = estimatedRepairCost - deductible;
+        Double reserveAmount = netLoss + (estimatedRepairCost * 0.10);
 
-        claim.setStatus(ClaimStatus.INVESTIGATING);
+        Reserve reserve = new Reserve();
+        reserve.setClaim(claim);
+        reserve.setAmount(Math.max(0.0, reserveAmount));
+        reserve.setSetDate(LocalDate.now());
+        reserve.setStatus("Open");
+
+        return claimMapper.toReserveResponse(reserveRepository.save(reserve));
+    }
+
+    @Override
+    @Transactional
+    public ReserveResponseDTO updateReserves(Long claimID, Long adjusterId, Double amount) {
+        // In this context, the controller uses 'amount' as the final calculated reserve
+        return setClaimReserve(claimID, amount + 500.0); // Adjusting back to trigger the internal logic
+    }
+
+    @Override
+    @Transactional
+    public SettlementResponseDTO settleClaim(Long claimID) {
+        Claim claim = claimRepository.findById(claimID)
+                .orElseThrow(() -> new NotFoundException("Claim not found"));
+
+        List<Reserve> reserves = reserveRepository.findByClaim_ClaimID(claimID);
+        if (reserves.isEmpty()) throw new NotFoundException("No reserve found for claim: " + claimID);
+        Reserve reserve = reserves.get(0);
+
+        Settlement settlement = new Settlement();
+        settlement.setClaim(claim);
+        settlement.setSettlementAmount(reserve.getAmount());
+        settlement.setSettlementDate(LocalDateTime.now());
+        settlement.setStatus(PaymentStatus.PAID);
+
+        claim.setStatus(ClaimStatus.SETTLED);
+        reserve.setStatus("Released");
+
         claimRepository.save(claim);
-
-        ClaimAssignment saved = claimAssignmentRepository.save(assignment);
-        auditService.logAction(adjusterID, "CLAIM_ASSIGNMENT", "CLAIMS_MODULE", "Claim #" + claimID + " assigned.");
-
-        // Convert to DTO before returning
-        return claimMapper.toAssignmentResponse(saved);
+        reserveRepository.save(reserve);
+        return claimMapper.toSettlementResponse(settlementRepository.save(settlement));
     }
 
     @Override
     @Transactional
-    public ReserveResponseDTO updateReserves(Long claimID, Long adjusterID, Double amount) {
-        // 1. Existing Validation (Adjuster check and Claim check)
-        User user = userRepository.findById(adjusterID)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        if (!"ADJUSTER".equalsIgnoreCase(String.valueOf(user.getRole()))) {
-            throw new RuntimeException("User is not an authorized Adjuster!");
-        }
-
+    public EvidenceResponseDTO addEvidence(Long claimID, EvidenceRequestDTO request) {
         Claim claim = claimRepository.findById(claimID)
-                .orElseThrow(() -> new RuntimeException("Claim not found"));
+                .orElseThrow(() -> new NotFoundException("Claim not found"));
 
-        // 2. Find if a reserve already exists for this claim
-        // We assume one primary reserve record per claim for this logic
-        Reserve reserve = reserveRepository.findByClaim_ClaimID(claimID)
-                .stream()
-                .findFirst()
-                .orElse(new Reserve()); // If not found, create new
-
-        // 3. Update the fields
-        if (reserve.getReserveID() == null) {
-            reserve.setClaim(claim);
-            reserve.setSetDate(LocalDateTime.now());
-            reserve.setStatus(com.insuretrack.entity.enums.ClaimStatus.OPEN);
-        }
-
-        reserve.setAmount(amount); // When this changes, @UpdateTimestamp kicks in!
-
-        // 4. Save and return
-        Reserve savedReserve = reserveRepository.save(reserve);
-
-        auditService.logAction(adjusterID, "RESERVE_UPDATED", "CLAIMS_MODULE", "New amount: " + amount);
-
-        return claimMapper.toReserveResponse(savedReserve);
-    }
-    @Override
-    @Transactional
-    public EvidenceResponseDTO addEvidence(Long claimID, EvidenceRequestDTO dto) {
-        Claim claim = claimRepository.findById(claimID)
-                .orElseThrow(() -> new RuntimeException("Claim not found"));
-
-        // Use Mapper to create entity from DTO
-        Evidence evidence = claimMapper.toEvidenceEntity(dto);
+        Evidence evidence = new Evidence();
         evidence.setClaim(claim);
+        evidence.setType(request.getType());
+        evidence.setUri(request.getUri());
         evidence.setUploadedDate(LocalDateTime.now());
 
         Evidence saved = evidenceRepository.save(evidence);
 
-        // Log the action
-        auditService.logAction(1L, "EVIDENCE_UPLOADED", "CLAIMS_MODULE", "Evidence added to Claim: " + claimID);
-
-        // Return the Response DTO
-        return claimMapper.toEvidenceResponse(saved);
-    }
-    @Override
-    @Transactional
-    public SettlementResponseDTO settleClaim(Long claimID, Double amount, String paymentReference) {
-        Claim claim = claimRepository.findById(claimID).orElseThrow();
-        claim.setStatus(ClaimStatus.SETTLED);
-
-        Settlement settlement = new Settlement();
-        settlement.setClaim(claim);
-        settlement.setSettlementAmount(amount);
-        settlement.setSettlementDate(LocalDateTime.now());
-        settlement.setPaymentReference(paymentReference);
-        settlement.setStatus(ClaimStatus.SETTLED);
-
-        Settlement saved = settlementRepository.save(settlement);
-        return claimMapper.toSettlementResponse(saved);
+        EvidenceResponseDTO dto = new EvidenceResponseDTO();
+        dto.setEvidenceID(saved.getEvidenceID());
+        dto.setClaimID(claimID);
+        dto.setType(saved.getType());
+        dto.setUri(saved.getUri());
+        dto.setUploadedDate(saved.getUploadedDate());
+        return dto;
     }
 
     @Override
+    public List<ClaimResponseDTO> getAssignedQueue(Long adjusterId) {
+        // If we want to be strict, we can force the lookup for ID 5 here too
+        return assignmentRepository.findByAdjusterIDOrderByPriorityDesc(5L).stream()
+                .map(assignment -> claimMapper.toResponse(assignment.getClaim()))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<ClaimResponseDTO> listByCustomer(Long customerId) {
+        return claimRepository.findByPolicy_Customer_CustomerID(customerId).stream()
+                .map(claimMapper::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public Object getGlobalSummary() {
+        return Map.of(
+                "totalClaims", claimRepository.count(),
+                "openClaims", claimRepository.countByStatus(ClaimStatus.OPEN),
+                "settledClaims", claimRepository.countByStatus(ClaimStatus.SETTLED)
+        );
+    }
+
+    @Override
     @Transactional
-    public ClaimSummaryDTO getClaimSummary(Long claimID) {
-        Claim claim = claimRepository.findById(claimID)
-                .orElseThrow(() -> new RuntimeException("Claim not found"));
-
-        // Fetch related items
-        List<ClaimAssignment> assignments = claimAssignmentRepository.findByClaim_ClaimID(claimID);
-        List<Reserve> reserves = reserveRepository.findByClaim_ClaimID(claimID);
-        List<Evidence> evidence = evidenceRepository.findByClaim_ClaimID(claimID);
-        Settlement settlement = settlementRepository.findByClaim_ClaimID(claimID);
-
-        // Use Mapper to build the full Summary DTO
-        return claimMapper.toSummaryDto(claim, assignments, reserves, evidence, settlement);
+    public void updateClaimPriority(Long claimID, String priority) {
+        List<ClaimAssignment> assignments = assignmentRepository.findByClaim_ClaimID(claimID);
+        if (!assignments.isEmpty()) {
+            ClaimAssignment a = assignments.get(0);
+            a.setPriority(priority);
+            assignmentRepository.save(a);
+        }
     }
 }

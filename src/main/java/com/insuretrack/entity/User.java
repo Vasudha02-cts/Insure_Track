@@ -19,7 +19,7 @@ public class User {
 
     private String name;
     private String email;
-    private String phone;
+    private Long phone;
     private String password; 
 
     @Enumerated(EnumType.STRING)

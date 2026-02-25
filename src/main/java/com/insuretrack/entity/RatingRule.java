@@ -1,28 +1,19 @@
 package com.insuretrack.entity;
 
 import jakarta.persistence.*;
+import lombok.Data;
 
+@Data
 @Entity
 @Table(name = "RatingRule")
 public class RatingRule {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "RuleID")
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long ruleID;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "ProductID", nullable = false)
+    @ManyToOne @JoinColumn(name = "product_id")
     private Product product;
 
-    @Column(name = "Factor")
-    private String factor; // Age, Location, etc. [cite: 107]
-
-    @Column(name = "Weight")
+    private String factor; // Age, VehicleType, ClaimsHistory
     private Double weight;
-
-    @Column(name = "Expression", columnDefinition = "TEXT")
-    private String expression;
-
-    // Getters and Setters
+    private String expression; // e.g., "base * factor + riskscore * 10"
 }

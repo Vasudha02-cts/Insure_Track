@@ -5,9 +5,10 @@ import com.insuretrack.entity.User;
 import java.util.List;
 
 public interface UserService {
+    // For Staff (Underwriters, Agents, Admin)
     UserResponseDTO registerUser(UserRequestDTO userRequestDTO);
 
-    // FIX: Change 'Customer' to 'CustomerResponseDTO' to match your implementation
+    // For Akhila (Creates User record AND Customer Profile record)
     CustomerResponseDTO registerCustomer(CustomerRequestDTO customerRequestDTO);
 
     UserResponseDTO getUserById(Long id);

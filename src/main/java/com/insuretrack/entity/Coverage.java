@@ -1,28 +1,19 @@
 package com.insuretrack.entity;
 
 import jakarta.persistence.*;
+import lombok.Data;
 
+@Data
 @Entity
 @Table(name = "Coverage")
 public class Coverage {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "CoverageID")
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long coverageID;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "ProductID", nullable = false)
+    @ManyToOne @JoinColumn(name = "product_id")
     private Product product;
 
-    @Column(name = "CoverageType")
-    private String coverageType; // Liability, Collision, etc. [cite: 101]
-
-    @Column(name = "LimitValue") // 'Limit' is a SQL reserved keyword
-    private Double limit;
-
-    @Column(name = "Deductible")
+    private String coverageType; // Liability, Collision
+    private Double limitAmount;
     private Double deductible;
-
-    // Getters and Setters
 }

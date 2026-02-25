@@ -8,5 +8,9 @@ import java.util.List;
 
 @Repository
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
-    List<Notification> findByUser_UserIDAndStatus(Long userID, String status); // Filter unread [cite: 266, 269]
+    // Finds notifications for a specific user, sorted by newest first
+    List<Notification> findByUserIDOrderByCreatedDateDesc(Long userID);
+
+    // Finds unread notifications
+    List<Notification> findByUserIDAndStatus(Long userID, String status);
 }

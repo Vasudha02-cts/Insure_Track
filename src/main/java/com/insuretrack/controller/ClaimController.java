@@ -2,12 +2,15 @@ package com.insuretrack.controller;
 
 import com.insuretrack.dto.*;
 import com.insuretrack.entity.*;
+import com.insuretrack.entity.enums.UserRole;
 import com.insuretrack.repository.*;
 import com.insuretrack.service.ClaimService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -19,7 +22,8 @@ public class ClaimController {
 
     @PostMapping("/intake")
     public ResponseEntity<ClaimResponseDTO> intake(@RequestBody ClaimRequestDTO dto) {
-        return ResponseEntity.ok(claimService.processIntake(dto));
+        // Corrected method name to match Service: initiateClaim
+        return ResponseEntity.ok(claimService.initiateClaim(dto));
     }
 
 
@@ -42,25 +46,52 @@ public class ClaimController {
     }
 
     @PostMapping("/{claimID}/evidence")
-    public ResponseEntity<EvidenceResponseDTO> addEvidence(
+    public ResponseEntity<String> addEvidence(
             @PathVariable Long claimID,
             @RequestBody EvidenceRequestDTO evidenceRequest) {
-        return ResponseEntity.ok(claimService.addEvidence(claimID, evidenceRequest));
+        claimService.addEvidence(claimID, evidenceRequest);
+        return ResponseEntity.ok("Evidence added successfully");
     }
-
     @PostMapping("/{claimID}/settle")
     public ResponseEntity<SettlementResponseDTO> settleClaim(
-            @PathVariable Long claimID,
-            @RequestParam Double amount,
-            @RequestParam String paymentReference) {
-        return ResponseEntity.ok(claimService.settleClaim(claimID, amount, paymentReference));
+            @PathVariable Long claimID) {
+        // The amount and reference are handled inside the service via the Reserve logic
+        return ResponseEntity.ok(claimService.settleClaim(claimID));
     }
-    @GetMapping("/{claimID}/summary")
-    public ResponseEntity<ClaimSummaryDTO> getClaimSummary(@PathVariable Long claimID) {
-        // This now returns a clean DTO instead of a Map
-        ClaimSummaryDTO summary = claimService.getClaimSummary(claimID);
-        return ResponseEntity.ok(summary);
+    @GetMapping("/summary")
+    public ResponseEntity<?> getClaimsSummary(@AuthenticationPrincipal User currentUser) {
+        if (currentUser.getRole() == UserRole.ADMIN) {
+            // Admin sees the global summary of all claims
+            return ResponseEntity.ok(claimService.getGlobalSummary());
+        } else if (currentUser.getRole() == UserRole.ADJUSTER) {
+            // Adjuster sees their assigned queue
+            return ResponseEntity.ok(claimService.getAssignedQueue(currentUser.getUserID()));
+        } else {
+            // Akhil only sees his specific claims
+            return ResponseEntity.ok(claimService.listByCustomer(currentUser.getUserID()));
+        }
     }
+    @GetMapping("/my-queue")
+    public ResponseEntity<List<ClaimResponseDTO>> getMyQueue(
+            @AuthenticationPrincipal User currentUser,
+            @RequestParam(required = false) String priority) {
 
+        List<ClaimResponseDTO> queue = claimService.getAssignedQueue(currentUser.getUserID());
+
+        if (priority != null && !priority.isEmpty()) {
+            return ResponseEntity.ok(queue.stream()
+                    .filter(c -> priority.equalsIgnoreCase(c.getPriority())) // Ensure your DTO has this field
+                    .toList());
+        }
+
+        return ResponseEntity.ok(queue);
+    }
+    @PatchMapping("/{claimID}/priority")
+    public ResponseEntity<String> escalateClaim(
+            @PathVariable Long claimID,
+            @RequestParam String priority) {
+        claimService.updateClaimPriority(claimID, priority);
+        return ResponseEntity.ok("Claim priority updated to " + priority);
+    }
 
 }

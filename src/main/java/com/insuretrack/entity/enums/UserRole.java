@@ -1,5 +1,5 @@
 package com.insuretrack.entity.enums;
 
 public enum UserRole {
-    CUSTOMER, AGENT, UNDERWRITER, ADJUSTER, ANALYST, ADMIN,Admin,Agent,underwriter,adjuster
+    CUSTOMER, AGENT, UNDERWRITER, ADJUSTER, ANALYST, ADMIN
 }

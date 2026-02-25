@@ -1,17 +1,27 @@
 package com.insuretrack.service;
 
 import com.insuretrack.dto.*;
-import com.insuretrack.entity.*;
-import java.util.Map;
+import java.util.List;
 
 public interface ClaimService {
-    // Return DTO instead of raw Claim entity [cite: 5, 23]
-    ClaimResponseDTO processIntake(ClaimRequestDTO dto);
+    // Basic Flow
+    ClaimResponseDTO initiateClaim(ClaimRequestDTO request);
 
-    ClaimAssignmentResponseDTO assignAdjuster(Long claimID, Long adjusterID, String priority);
+    // Assignment and Triage
+    ClaimAssignmentResponseDTO assignAdjuster(Long claimID, Long adjusterId, String priority);
+    void updateClaimPriority(Long claimID, String priority);
 
-    ReserveResponseDTO updateReserves(Long claimID, Long adjusterID, Double amount);
-    EvidenceResponseDTO addEvidence(Long claimID, EvidenceRequestDTO evidenceRequest);
-    SettlementResponseDTO settleClaim(Long claimID, Double amount, String paymentReference);
-    ClaimSummaryDTO getClaimSummary(Long claimID);
+    // Financials
+    ReserveResponseDTO setClaimReserve(Long claimID, Double estimatedRepairCost);
+    // Overloaded or renamed for the controller's specific call
+    ReserveResponseDTO updateReserves(Long claimID, Long adjusterId, Double amount);
+    SettlementResponseDTO settleClaim(Long claimID);
+
+    // Evidence (Changed from void to DTO to fix 'void type not allowed')
+    EvidenceResponseDTO addEvidence(Long claimID, EvidenceRequestDTO evidence);
+
+    // Summary and Queues
+    Object getGlobalSummary(); // Or a specific Summary DTO
+    List<ClaimResponseDTO> getAssignedQueue(Long adjusterId);
+    List<ClaimResponseDTO> listByCustomer(Long customerId);
 }

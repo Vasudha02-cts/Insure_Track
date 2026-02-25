@@ -10,4 +10,7 @@ import java.util.List;
 @Repository
 public interface ClaimAssignmentRepository extends JpaRepository<ClaimAssignment, Long> {
     List<ClaimAssignment> findByClaim_ClaimID(Long claimID);
+    // Updated: Find by Adjuster and sort by Priority
+    List<ClaimAssignment> findByAdjusterIDOrderByPriorityDesc(Long adjusterID);
+    long countByPriority(String priority);
 }

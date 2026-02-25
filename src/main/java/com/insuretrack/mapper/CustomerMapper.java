@@ -9,13 +9,14 @@ import org.mapstruct.Mapping;
 @Mapper(componentModel = "spring", uses = {BeneficiaryMapper.class, InsuredObjectMapper.class})
 public interface CustomerMapper {
 
-    // Map Request DTO -> Entity
+    @Mapping(target = "customerID", ignore = true)
+    @Mapping(target = "user", ignore = true) // Linked manually in Service via UserID
     @Mapping(target = "beneficiaries", source = "beneficiaries")
     @Mapping(target = "insuredObjects", source = "insuredObjects")
     Customer toEntity(CustomerRequestDTO dto);
 
-    // Map Entity -> Response DTO
-    @Mapping(target = "email", ignore = true) // Handled in Service
-    @Mapping(target = "phone", ignore = true) // Handled in Service
+    @Mapping(target = "userID", source = "user.userID")
+    @Mapping(target = "email", source = "email")
+    @Mapping(target = "phone", source = "phone")
     CustomerResponseDTO toResponse(Customer customer);
 }

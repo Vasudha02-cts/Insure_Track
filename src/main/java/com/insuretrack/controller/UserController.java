@@ -1,44 +1,48 @@
 package com.insuretrack.controller;
 
 import com.insuretrack.dto.*;
+import com.insuretrack.entity.enums.UserRole;
 import com.insuretrack.service.UserService;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.insuretrack.entity.enums.UserRole;
+
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/users")
+@RequiredArgsConstructor // Using Lombok instead of Autowired for cleaner code
 public class UserController {
 
-    @Autowired
-    private UserService userService;
+    private final UserService userService;
 
-    // 1. Standard User Registration
-    @PostMapping("/register")
-    public ResponseEntity<UserResponseDTO> register(@RequestBody UserRequestDTO userDTO) {
-        return ResponseEntity.ok(userService.registerUser(userDTO));
-    }
-
-    // 2. Customer Registration (Profile + User Account)
+    // 1. Customer Registration (Nested Profile + User)
     @PostMapping("/register/customer")
-    public ResponseEntity<CustomerResponseDTO> registerCustomer(@RequestBody CustomerRequestDTO customerRequest) {
-        // 1. Give it a clean variable name
-        // 2. Pass the DTO to the service
-        CustomerResponseDTO registeredCustomer = userService.registerCustomer(customerRequest);
-
-        // 3. Return the actual data instead of a 'new' empty object
-        return ResponseEntity.ok(registeredCustomer);
+    public ResponseEntity<CustomerResponseDTO> registerCustomer(@RequestBody CustomerRequestDTO dto) {
+        return ResponseEntity.ok(userService.registerCustomer(dto));
     }
 
-    // 3. Retrieve specific user profile
+    // 2. Internal Staff Registration (Generic)
+    @PostMapping("/register/staff")
+    public ResponseEntity<UserResponseDTO> registerStaff(@RequestBody UserRequestDTO dto, @RequestParam UserRole role) {
+        // We force the role based on the query parameter for safety
+        dto.setRole(role);
+        return ResponseEntity.ok(userService.registerUser(dto));
+    }
+
+    // 3. Admin: Specific endpoint to create an Underwriter
+    @PostMapping("/register/underwriter")
+    public ResponseEntity<UserResponseDTO> registerUnderwriter(@RequestBody UserRequestDTO dto) {
+        dto.setRole(UserRole.UNDERWRITER);
+        return ResponseEntity.ok(userService.registerUser(dto));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<UserResponseDTO> getUser(@PathVariable Long id) {
-        UserResponseDTO user = userService.getUserById(id);
-        return user != null ? ResponseEntity.ok(user) : ResponseEntity.notFound().build();
+        return ResponseEntity.ok(userService.getUserById(id));
     }
 
-    // 4. List all users (Admin functionality)
     @GetMapping
     public ResponseEntity<List<UserResponseDTO>> listAllUsers() {
         return ResponseEntity.ok(userService.getAllUsers());

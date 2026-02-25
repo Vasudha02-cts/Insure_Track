@@ -1,11 +1,12 @@
 package com.insuretrack.dto;
 
 import lombok.Data;
+import java.time.LocalDate;
 
 @Data
 public class ClaimRequestDTO {
-    private Long policyID;     // To link the claim to Policy 1
-    private String claimType;  // AUTO, HEALTH, etc.
+    private Long policyID;
+    private String claimType;  // AUTO
     private String description;
-    private String incidentDate; // Format: YYYY-MM-DD
+    private LocalDate incidentDate; // Changed from String to LocalDate
 }

@@ -15,14 +15,16 @@ public class Customer {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long customerID;
 
-    private Long userID; // Simple Long to link to User Table
+    @OneToOne
+    @JoinColumn(name = "user_id") // Matches the column with data in your SQL
+    private User user;
     private String name;
     private LocalDate dob;
-    private String contactInfo; // Simple String instead of Embeddable
-
+    private String contactInfo;
     @Enumerated(EnumType.STRING)
     private CustomerSegment segment;
-
+    private String email;
+    private Long phone;
     @Enumerated(EnumType.STRING)
     private CommonStatus status;
 
@@ -31,4 +33,5 @@ public class Customer {
 
     @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<InsuredObject> insuredObjects;
+
 }
